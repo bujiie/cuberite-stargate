@@ -29,15 +29,6 @@ function StargateSetHandler(a_Split, a_Player)
     end
 end
 
-function StargateHandler(a_Split, a_Player)
-    local Target = a_Split[2]
-    if(cSgDao:StargateNameMatchesPlayer(Target)) then
-        return cSgAction:StargatePlayerToPlayer(a_Player, Target)
-    else
-        return cSgAction:StargateToCoordsByReferenceName(a_Player, Target, false)
-    end
-end
-
 function DhdHandler(a_Split, a_Player)
     if(not(cSgDao:StargateNameRegisteredToPlayer(a_Player, "home"))) then
         cMessage:SendFailure(a_Player, "Stargate cannot connect. Home not found.")
@@ -48,6 +39,60 @@ function DhdHandler(a_Split, a_Player)
         return true
     else
         return false
+    end
+end
+
+function StargateRenameHandler(a_Split, a_Player)
+    local OldName
+    local NewName
+
+    if(#a_Split == 4) then
+        if(CheckGlobalFlag(a_Split[2])) then
+            OldName = a_Split[3]
+            NewName = a_Split[4]
+        else
+            cMessage:SendFailure(a_Player, "Only global flag allowed (-g or --global)")
+            return false
+        end
+    else
+        OldName = a_Split[2]
+        NewName = a_Split[3]
+    end
+
+    if(not(cSgDao:StargateNameRegisteredToPlayer(a_Player, OldName))) then
+        cMessage:SendFailure(a_Player, "No Stargates with that name exists for you.")
+        return true
+    elseif(cSgDao:StargateNameRegisteredToPlayer(a_Player, NewName)) then
+        cMessage:SendFailure(a_Player, "Stargate with that name is already registered to you.")
+        return true
+    end
+
+    if(cSgDao:UpdateStargate(a_Player, a_Player:GetWorld(), OldName, NewName)) then
+        cMessage:SendSuccess(a_Player, "Stargate was renamed: ${From} -> ${To}", {From = OldName, To = NewName})
+    else
+        cMessage:SendFailure(a_Player, "Stargate could not be renamed.")
+    end
+    return true
+end
+
+function SGCStargateRenameHandler(a_Split, a_Player)
+    local TargetPlayerName = a_Split[2]
+    local TargetPlayer = cSgDao:GetPlayerByName(TargetPlayerName)
+
+    if(TargetPlayer == nil) then
+        cMessage:SendFailure(a_Player, "Could not find Player: ${PlayerName}.", {PlayerName = TargetPlayerName})
+        return true
+    end
+
+    return StargateRenameHandler(Tail(a_Split), TargetPlayer)
+end
+
+function StargateHandler(a_Split, a_Player)
+    local Target = a_Split[2]
+    if(cSgDao:StargateNameMatchesPlayer(Target)) then
+        return cSgAction:StargatePlayerToPlayer(a_Player, Target)
+    else
+        return cSgAction:StargateToCoordsByReferenceName(a_Player, Target, false)
     end
 end
 
@@ -118,3 +163,5 @@ function DeleteStargateHandler(a_Split, a_Player)
         return false
     end
 end
+
+

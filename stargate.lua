@@ -16,24 +16,14 @@ function InitializeStargateCommands()
 
     cPluginManager.BindCommand("/sg", "stargate.gdo", StargateHandler, " ~ Travel to a destination referenced by name or by coordinates.")
     cPluginManager.BindCommand("/sgdel", "stargate.gdo", DeleteStargateHandler, " ~ Delete a reference previously set by you.")
+    cPluginManager.BindCommand("/sgrename", "stargate.gdo", StargateRenameHandler, " ~ Rename an existing Stargate registered to the player.")
     cPluginManager.BindCommand("/sgl", "stargate.gdo", test, " ~ List all available Stargates to you.")
 
     cPluginManager.BindCommand("/sgc", "stargate.cmd", SGCStargateHandler, " ~ /sgc <destination> <player> where destination can be another player or Stargate.")
     cPluginManager.BindCommand("/sgcdel", "stargate.cmd", SGCDeleteStargateHandler, " ~ Delete any Stargate defined by any player.")
+    cPluginManager.BindCommand("/sgcrename", "stargate.gdo", SGCStargateRenameHandler, " ~ Rename an existing Stargate registered to any player.")
     cPluginManager.BindCommand("/sgcl", "stargate.cmd", test, " ~ List all Stargates defined with optional filtering by Player.")
 end
-
-
-
-function CheckGlobalFlag(a_Global)
-    if(a_Global == "-g" or a_Global == "--global") then
-        return true
-    end
-    return false
-end
-
-
-
 
 function test() end
 

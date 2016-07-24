@@ -69,3 +69,14 @@ function TableLength(Table)
     end
     return Length
 end
+
+function CheckGlobalFlag(a_Global)
+    if(a_Global == "-g" or a_Global == "--global") then
+        return true
+    end
+    return false
+end
+
+function Tail(list)
+    return { select(2, unpack(list)) }
+end

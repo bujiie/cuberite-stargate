@@ -38,7 +38,6 @@ end
 
 function cSgDao:AddStargate(a_Player, a_World, a_Name, a_PosX, a_PosY, a_PosZ, a_Global)
     if(cSgDao:IsStargateNameRegistered(a_Player, a_Name, a_Global)) then
-        cLogger:INFO("BAU: I'm here")
         return false
     end
 
@@ -79,6 +78,27 @@ function cSgDao:DeleteStargate(a_Player, a_World, a_Name)
     end
 end
 
+function cSgDao:UpdateStargate(a_Player, a_World, a_OldName, a_NewName)
+    local result = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET Name = ? WHERE Name = ? AND World = ? AND PlayerId = ? AND Enabled = 1",
+        {a_NewName, a_OldName, a_World:GetName(), a_Player:GetUUID()}
+    )
+
+    if(result == nil) then
+        cLogger:WARN(
+            "Stargate name '${StargateName}' was not updated.",
+            {StargateName = a_OldName}
+        )
+        return false
+    else
+        cLogger:INFO(
+            "Stargate '${StargateOld}' name was updated to '${StargateNew}'.",
+            {StargateOld = a_OldName, StargateNew = a_NewName}
+        )
+        return true
+    end
+end
+
 function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
     local Resource = {}
     Resource["World"] = a_World
@@ -100,6 +120,10 @@ function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
     end
     return Resource
 end
+
+
+
+
 
 function cSgDao:IsStargateNameRegistered(a_Player, a_Name, a_Global)
     if(cSgDao:StargateNameMatchesPlayer(a_Name)) then
@@ -147,12 +171,28 @@ end
 -- Should not be used as a standalone function. To be used as part of
 -- a helper function.
 function cSgDao:StargateNameMatchesPlayer(a_Name)
+    return (cSgDao:GetPlayerByName(a_Name) ~= nil)
+end
+
+function cSgDao:GetPlayerByName(a_PlayerName)
+    local Player
     cRoot:Get():ForEachPlayer(
         function(a_Player)
-            if(a_Player:GetName() == a_Name) then
-                return true
+            if(a_Player:GetName() == a_PlayerName) then
+                Player = a_Player
             end
         end
     )
-    return false
+    return Player
+end
+
+function cSgDao:GetPlayerByUUID(a_PlayerUUID)
+    cRoot:Get():ForEachPlayer(
+        function(a_Player)
+            if(a_Player:GetUUID() == a_PlayerUUID) then
+                return a_Player
+            end
+        end
+    )
+    return nil
 end
