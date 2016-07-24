@@ -91,9 +91,11 @@ function StargateHandler(a_Split, a_Player)
     local Target = a_Split[2]
     if(cSgDao:StargateNameMatchesPlayer(Target)) then
         return cSgAction:StargatePlayerToPlayer(a_Player, Target)
-    else
+    elseif(cSgDao:StargateNameRegisteredToPlayer(a_Player, Target) or cSgDao:StargateNameRegisteredAsGlobal(Target)) then
         return cSgAction:StargateToCoordsByReferenceName(a_Player, Target, false)
     end
+    cMessage:SendFailure(a_Player, "Stargate does not exist.")
+    return true
 end
 
 function SGCStargateHandler(a_Split, a_Player)
