@@ -6,6 +6,7 @@
 
 function InitializeStargateSystem()
     cSgDao:InitializeStargateDb()
+    cPluginManager:AddHook(cPluginManager.HOOK_KILLED, OnKilled)
     --InitializeStargateCommands()
 end
 

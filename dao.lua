@@ -98,7 +98,13 @@ function cSgDao:DeletePlayersStargate(a_Player, a_Name)
     end
 end
 
-
+function cSgDao:UpdateStargateCoords(Player, World, PosX, PosY, PosZ)
+    local result = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET PosX = ?, PosY = ?, PosZ = ? WHERE World = ? AND PlayerId = ? AND Enabled = 1",
+        {PosX, PosY, PosZ, World:GetName(), Player:GetUUID()}
+    )
+    return true
+end
 
 function cSgDao:UpdateStargate(a_Player, a_World, a_OldName, a_NewName)
     local result = StargateDb:ExecuteStatement(
@@ -120,6 +126,52 @@ function cSgDao:UpdateStargate(a_Player, a_World, a_OldName, a_NewName)
         return true
     end
 end
+
+function cSgDao:PlayerLastDeathLocation(Player)
+    local Result = {}
+    StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE Name = 'last_death' AND PlayerId = ? LIMIT 1",
+        {Player:GetUUID()},
+        function(Row)
+            Result["PosX"] = Row["PosX"]
+            Result["PosY"] = Row["PosY"]
+            Result["PosZ"] = Row["PosZ"]
+            Result["World"] = Row["World"]
+        end
+    )
+
+    return Result
+end
+
+function cSgDao:PlayerLastDeathLocationExists(Player)
+    local Result = 0
+    StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE Name ='last_death' AND PlayerId = ? LIMIT 1",
+        {Player:GetUUID()},
+        function(Row)
+            Result = Result + 1
+        end
+    )
+
+    return Result > 0
+end
+
+
+-- Should be called OnKilled hook
+function cSgDao:ManagePlayersLastDeathLocation(Player)
+    local World = Player:GetWorld()
+    local PosX = Player:GetPosX()
+    local PosY = Player:GetPosY()
+    local PosZ = Player:GetPosZ()
+
+    if(cSgDao:PlayerLastDeathLocationExists(Player)) then
+        return cSgDao:UpdateStargateCoords(Player, World, PosX, PosY, PosZ)
+    else
+        return cSgDao:AddStargate(Player, World, "last_death", PosX, PosY, PosZ, false)
+    end
+    return true
+end
+
 
 function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
     local Resource = {}

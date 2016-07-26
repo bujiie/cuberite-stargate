@@ -16,6 +16,26 @@ g_PluginInfo =
         an admin to update any player's saved locations.]],
     Commands =
     {
+        ["/ld"] =
+        {
+            Permission = "stargate.gdo.lastdeath",
+            HelpString = "Transports player to the location of their last death.",
+            Subcommands =
+            {
+                go =
+                {
+                    HelpString = "Transports player to the location of their last death.",
+                    Permission = "stargate.gdo.lastdeath",
+                    Handler = LastDeathLocationHandler
+                },
+                info =
+                {
+                    HelpString = "Get info about the location of players last death.",
+                    Permission = "stragate.gdo.lastdeath",
+                    Handler = LastDeathLocationInfoHandler
+                }
+            }
+        },
         ["/dhd"] =
         {
             Permission = "stargate.gdo",

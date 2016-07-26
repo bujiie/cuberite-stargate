@@ -10,7 +10,7 @@ function Set (list)
 end
 
 
-ReservedWords = Set { "spawn", "nether", "overworld", "end" }
+ReservedWords = Set { "spawn", "nether", "overworld", "end", "last_death" }
 
 function IsReservedWord(Word)
     return (ReservedWords[Word] ~= nil)
@@ -149,6 +149,56 @@ function test(Split, Player)
     cLogger:INFO("I'm Here")
     return true
 end
+
+
+function LastDeathLocationHandler(Split, Player)
+    if(not(cSgDao:PlayerLastDeathLocationExists(Player))) then
+        cMessage:SendFailure(Player, "You have not died yet.")
+        return true
+    end
+
+    local Result = cSgDao:PlayerLastDeathLocation(Player)
+    local World = cRoot:Get():GetWorld(Result["World"])
+    local PosX = Result["PosX"]
+    local PosY = Result["PosY"]
+    local PosZ = Result["PosZ"]
+
+    return cSgAction:StargatePlayerToCoords(Player, World, PosX, PosY, PosZ)
+end
+
+function LastDeathLocationInfoHandler(Split, Player)
+    if(not(cSgDao:PlayerLastDeathLocationExists(Player))) then
+        cMessage:SendFailure(Player, "You have not died yet.")
+        return true
+    end
+
+    local Result = cSgDao:PlayerLastDeathLocation(Player)
+    local World = Result["World"]
+    local PosX = Result["PosX"]
+    local PosY = Result["PosY"]
+    local PosZ = Result["PosZ"]
+
+    cMessage:Send(Player, "Last Death: ${World} - <${X}, ${Y}, ${Z}>", {World=World, X=PosX, Y=PosY, Z=PosZ})
+    return true
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
