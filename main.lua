@@ -2,7 +2,7 @@
 -- User: brian.ujiie
 -- Date: 7/23/16
 --
-
+g_UsePrefixes = true
 PLUGIN = nil
 
 function Initialize(Plugin)
@@ -10,6 +10,10 @@ function Initialize(Plugin)
     Plugin:SetVersion(1)
 
     PLUGIN = Plugin
+    -- Load the InfoReg shared library:
+    dofile(cPluginManager:GetPluginsPath() .. "/InfoReg.lua")
+
+    RegisterPluginInfoCommands()
     InitializeStargateSystem()
     LOG(Plugin:GetName() .. " is starting!")
     return true

@@ -122,6 +122,31 @@ function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
 end
 
 
+function cSgDao:ViewStargatesAccessibleByPlayer(Player, World, Name)
+    local Resource = {}
+    Resource["World"] = World
+
+    -- If a Stargate registered to a player has the same name as a globally defined Stargate, the player gate
+    -- takes precedence.
+    local result = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE Name = ? AND World = ? AND (PlayerId = ? OR Global = 1) AND Enabled = 1 LIMIT 1",
+        {Name, World:GetName(), Player:GetUUID()},
+        function(Rpw)
+            Resource["PosX"] = Rpw["PosX"]
+            Resource["PosY"] = Rpw["PosY"]
+            Resource["PosZ"] = Rpw["PosZ"]
+        end
+    )
+
+    if(result == nil) then
+        cLogger:ERROR(
+            "Could not retrieve information about '${StargateName}'.",
+            {StargateName = Name})
+    end
+    return Resource
+end
+
+
 
 
 
@@ -139,6 +164,11 @@ function cSgDao:IsStargateNameRegistered(a_Player, a_Name, a_Global)
         return true
     end
     return false
+end
+
+function cSgDao:IsStargateAccessibleByPlayer(Player, Name)
+    return (cSgDao:StargateNameRegisteredAsGlobal(Name) or
+            cSgDao:StargateNameRegisteredToPlayer(Player, Name))
 end
 
 function cSgDao:StargateNameRegisteredToPlayer(a_Player, a_Name)

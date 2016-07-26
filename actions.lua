@@ -27,6 +27,10 @@ function cSgAction:StargatePlayerToPlayer(a_CtxPlayer, a_TargetPlayer)
     end
 end
 
+function cSgAction:StargatePlayerToVector(Player, World, LocationVec)
+    return cSgAction:StargatePlayerToCoords(Player, World, LocationVec:X(), LocationVec:Y(), LocationVec:Z())
+end
+
 function cSgAction:StargatePlayerToCoords(a_Player, a_World, a_PosX, a_PosY, a_PosZ)
     local stargate = function(a_Player)
         return a_Player:TeleportToCoords(a_PosX, a_PosY, a_PosZ)
@@ -45,6 +49,16 @@ function cSgAction:StargateToCoordsByReferenceName(a_Player, a_Name, a_Global)
     local Stargate = cSgDao:ViewStargate(a_Player, a_Player:GetWorld(), a_Name, a_Global)
 
     if(cSgAction:StargatePlayerToCoords(a_Player, Stargate["World"], Stargate["PosX"], Stargate["PosY"], Stargate["PosZ"])) then
+        return true
+    else
+        return false
+    end
+end
+
+function cSgAction:TravelToLocationByReferenceName(Player, Name, Global)
+    local Stargate = cSgDao:ViewStargatesAccessibleByPlayer(Player, Player:GetWorld(), Name)
+
+    if(cSgAction:StargatePlayerToCoords(Player, Stargate["World"], Stargate["PosX"], Stargate["PosY"], Stargate["PosZ"])) then
         return true
     else
         return false

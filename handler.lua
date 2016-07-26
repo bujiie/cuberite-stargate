@@ -2,8 +2,74 @@
 -- User: brian.ujiie
 -- Date: 7/24/16
 --
-cSgHandler = {}
-cSgHandler.__index = cSgHandler
+
+function DialHomeDeviceHandler(Split, Player)
+    local DEFAULT_LOCATION = "home"
+
+    if(cSgDao:StargateNameRegisteredToPlayer(Player, DEFAULT_LOCATION)) then
+        return cSgAction:StargateToCoordsByReferenceName(Player, DEFAULT_LOCATION, false)
+    end
+    cMessage:SendFailure(Player, "Stargate cannot connect. Home not found.")
+    return true
+end
+
+function StargateTravelHandler(Split, Player)
+    local TargetLocation = Split[2]
+
+    if(cSgDao:StargateNameMatchesPlayer(TargetLocation)) then
+        return cSgAction:StargatePlayerToPlayer(Player, TargetLocation)
+    elseif(cSgDao:IsStargateAccessibleByPlayer(Player, TargetLocation)) then
+        return cSgAction:TravelToLocationByReferenceName(Player, TargetLocation, false)
+    end
+    return true
+end
+
+function SetStargateHandler(Split, Player)
+    local ProposedName = Split[3]
+
+    if(cSgDao:StargateNameMatchesPlayer(ProposedName)) then
+        cMessage:SendFailure(Player, "'${ProposedName}' coincides with a Player's name. Choose a different name.", {ProposedName=ProposedName})
+        return true
+    end
+
+    if(cSgDao:AddStargate(Player, Player:GetWorld(), ProposedName, Player:GetPosX(), Player:GetPosY(), Player:GetPosZ(), false)) then
+        cMessage:Send(Player, "Stargate added to the system.")
+    else
+        cMessage:SendFailure(Player, "Could not lock onto coordinates. Stargate not added.")
+    end
+    return true
+end
+
+function SpawnPointHandler(Split, Player)
+    World = cRoot:Get():GetDefaultWorld()
+
+    if(World ~= nil) then
+        return cSgAction:StargatePlayerToCoords(Player, World, World:GetSpawnX(), World:GetSpawnY(), World:GetSpawnZ())
+    end
+    cMessage:SendFailure(Player, "A default world was not found. Cannot travel to spawn point.")
+    return true
+end
+
+function SpawnPointInfoHandler(Split, Player)
+    World = cRoot:Get():GetDefaultWorld()
+
+    if(World ~= nil) then
+        cMessage:Send(Player, "Spawn Point: <${X}, ${Y}, ${Z}>", {X=World:GetSpawnX(), Y=World:GetSpawnY(), Z=World:GetSpawnZ()})
+    else
+        cMessage:SendFailure(Player, "A default world was not found. Cannot travel to spawn point.")
+    end
+    return true
+end
+
+
+function test(Split, Player)
+    cMessage:SendSuccess(Player, "Hi")
+    cLogger:INFO("I'm Here")
+    return true
+end
+
+
+
 
 function StargateSetHandler(a_Split, a_Player)
     local Global    = false
