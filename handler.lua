@@ -3,6 +3,19 @@
 -- Date: 7/24/16
 --
 
+function Set (list)
+    local set = {}
+    for _, l in ipairs(list) do set[l] = true end
+    return set
+end
+
+
+ReservedWords = Set { "spawn", "nether", "overworld", "end" }
+
+function IsReservedWord(Word)
+    return (ReservedWords[Word] ~= nil)
+end
+
 function DialHomeDeviceHandler(Split, Player)
     local DEFAULT_LOCATION = "home"
 
@@ -16,7 +29,9 @@ end
 function StargateTravelHandler(Split, Player)
     local TargetLocation = Split[2]
 
-    if(cSgDao:StargateNameMatchesPlayer(TargetLocation)) then
+    if(TargetLocation == "spawn") then
+        return SpawnPointHandler(Split, Player)
+    elseif(cSgDao:StargateNameMatchesPlayer(TargetLocation)) then
         return cSgAction:StargatePlayerToPlayer(Player, TargetLocation)
     elseif(cSgDao:IsStargateAccessibleByPlayer(Player, TargetLocation)) then
         return cSgAction:TravelToLocationByReferenceName(Player, TargetLocation, false)
@@ -32,11 +47,55 @@ function SetStargateHandler(Split, Player)
         return true
     end
 
+    if(IsReservedWord(ProposedName)) then
+        cMessage:SendFailure(Player, "'${Word}' is a reserved word.", {Word=ProposedName})
+        return true
+    end
+
     if(cSgDao:AddStargate(Player, Player:GetWorld(), ProposedName, Player:GetPosX(), Player:GetPosY(), Player:GetPosZ(), false)) then
         cMessage:Send(Player, "Stargate added to the system.")
     else
         cMessage:SendFailure(Player, "Could not lock onto coordinates. Stargate not added.")
     end
+    return true
+end
+
+function RenameStargateHandler(Split, Player)
+    local OldName = Split[3]
+    local NewName = Split[4]
+
+    if(not(cSgDao:StargateNameRegisteredToPlayer(Player, OldName))) then
+        cMessage:SendFailure(Player, "Stargate with name '${StargateName}' is not registered in your system.", {StargateName=OldName})
+        return true
+    end
+
+    if(cSgDao:StargateNameMatchesPlayer(NewName)) then
+        cMessage:SendFailure(Player, "'${ProposedName}' coincides with a Player's name. Choose a different name.", {ProposedName=NewName})
+        return true
+    end
+
+    if(cSgDao:UpdateStargate(Player, Player:GetWorld(), OldName, NewName)) then
+        cMessage:SendSuccess(Player, "Stargate was renamed: ${OldName} -> ${NewName}", {OldName = OldName, NewName = NewName})
+    else
+        cMessage:SendFailure(Player, "Stargate could not be renamed.")
+    end
+    return true
+end
+
+function RemoveStargateHandler(Split, Player)
+    local Target = Split[3]
+
+    if(not(cSgDao:StargateNameRegisteredToPlayer(Player, Target))) then
+        cMessage:SendFailure(Player, "No Stargate registered to you with name '${StargateName}'.", {StargateName=Target})
+        return false
+    end
+
+    if(cSgDao:DeletePlayersStargate(Player, Target)) then
+        cMessage:SendSuccess(Player, "Stargate '${StargateName}' was decommissioned.", {StargateName = Target})
+    else
+        cMessage:SendFailure(Player, "Stargate '${StargateName}' was not decommissioned.", {StargateName = Target})
+    end
+
     return true
 end
 
@@ -58,6 +117,28 @@ function SpawnPointInfoHandler(Split, Player)
     else
         cMessage:SendFailure(Player, "A default world was not found. Cannot travel to spawn point.")
     end
+    return true
+end
+
+function ListStargatesHandler(Split, Player)
+    local Results
+    local DEFAULT_LIMIT = 10
+    local DEFAULT_OFFSET = 0
+    local Message = ""
+
+    if(#Split == 2) then
+        Results = cSgDao:ViewStargateList(Player, DEFAULT_OFFSET, DEFAULT_LIMIT)
+    elseif(#Split == 3) then
+        Results = cSgDao:ViewStargateList(Player, Split[3], DEFAULT_LIMIT)
+    elseif(#Split == 4) then
+        Results = cSgDao:ViewStargateList(Player, Split[3], Split[4])
+    end
+
+    for Result in Results do
+        Message = Message + Result["Name"]
+    end
+
+    cMessage:Send(Player, "${Message}", {Message=Message})
     return true
 end
 
@@ -231,5 +312,4 @@ function DeleteStargateHandler(a_Split, a_Player)
         return false
     end
 end
-
 

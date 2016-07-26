@@ -43,6 +43,7 @@ g_PluginInfo =
                 },
                 spawninfo =
                 {
+                    Alias = "si",
                     HelpString = "The spawn point coordinates.",
                     Permission = "stargate.gdo.spawn",
                     Handler = SpawnPointInfoHandler
@@ -52,6 +53,26 @@ g_PluginInfo =
                     HelpString = "Save current coordinates to your Stargate system.",
                     Permission = "stargate.gdo.set",
                     Handler = SetStargateHandler
+                },
+                rename =
+                {
+                    HelpString = "Rename a Stargate.",
+                    Permission = "stargate.gdo.rename",
+                    Handler = RenameStargateHandler
+                },
+                remove =
+                {
+                    Alias = "rm",
+                    HelpString = "Decommission a Stargate from your system.",
+                    Permission = "stargate.gdo.remove",
+                    Handler = RemoveStargateHandler
+                },
+                list =
+                {
+                    Alias = "ls",
+                    HelpString = "List Stargates available to you.",
+                    Permission = "stargate.gdo.list",
+                    Handler = ListStargatesHandler
                 }
             }
         }

@@ -78,6 +78,28 @@ function cSgDao:DeleteStargate(a_Player, a_World, a_Name)
     end
 end
 
+
+function cSgDao:DeletePlayersStargate(a_Player, a_Name)
+    local result = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET Enabled=0 WHERE Name = ? AND PlayerId = ? AND Global = 0",
+        {a_Name, a_Player:GetUUID()}
+    )
+
+    if(result == nil)  then
+        cLogger:WARN(
+            "Stargate ${StargateName} added by ${PlayerName} was not found. Cannot decommission.",
+            {StargateName = a_Name, PlayerName = a_Player:GetName()})
+        return false
+    else
+        cLogger:INFO(
+            "Stargate ${StargateName} added by ${PlayerName} was decommissioned.",
+            {StargateName = a_Name, PlayerName = a_Player:GetName()})
+        return true
+    end
+end
+
+
+
 function cSgDao:UpdateStargate(a_Player, a_World, a_OldName, a_NewName)
     local result = StargateDb:ExecuteStatement(
         "UPDATE Stargate SET Name = ? WHERE Name = ? AND World = ? AND PlayerId = ? AND Enabled = 1",
@@ -117,6 +139,33 @@ function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
         cLogger:ERROR(
             "Could not retrieve information about '${StargateName}'.",
             {StargateName = a_Name})
+    end
+    return Resource
+end
+
+function cSgDao:ViewStargateList(Player, Offset, Limit)
+    local Resource = {}
+
+    local result = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE PlayerId = ? AND Global = 0 AND Enabled = 1 LIMIT ? OFFSET ?",
+        {Player:GetUUID(), Limit, Offset},
+        function(Row)
+            local World = Row["World"]
+
+            Resource["Name"] = World
+            if(World == "world") then
+                Resource["Name"] = Resource["Name"] .. " (W)"
+            elseif(World == "world_nether") then
+                Resource["Name"] = Resource["Name"] .. " (N)"
+            elseif(Worlf == "world_end") then
+                Resource["Name"] = Resource["Name"] .. " (E)"
+            end
+        end
+    )
+
+    if(result == nil) then
+        cLogger:ERROR(
+            "Could not retrieve list of Stargates.")
     end
     return Resource
 end
