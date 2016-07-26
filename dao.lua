@@ -145,21 +145,26 @@ end
 
 function cSgDao:ViewStargateList(Player, Offset, Limit)
     local Resource = {}
-
+    local Index = 0
     local result = StargateDb:ExecuteStatement(
         "SELECT * FROM Stargate WHERE PlayerId = ? AND Global = 0 AND Enabled = 1 LIMIT ? OFFSET ?",
         {Player:GetUUID(), Limit, Offset},
         function(Row)
             local World = Row["World"]
+            local Name = Row["Name"]
 
-            Resource["Name"] = World
             if(World == "world") then
-                Resource["Name"] = Resource["Name"] .. " (W)"
+                Name = Name .. " (W)"
             elseif(World == "world_nether") then
-                Resource["Name"] = Resource["Name"] .. " (N)"
-            elseif(Worlf == "world_end") then
-                Resource["Name"] = Resource["Name"] .. " (E)"
+                Name = Name .. " (N)"
+            elseif(World == "world_end") then
+                Name = Name .. " (E)"
+            else
+                Name = Name .. " (?)"
             end
+
+            Resource[Index] = Name
+            Index = Index + 1
         end
     )
 

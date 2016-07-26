@@ -134,8 +134,9 @@ function ListStargatesHandler(Split, Player)
         Results = cSgDao:ViewStargateList(Player, Split[3], Split[4])
     end
 
-    for Result in Results do
-        Message = Message + Result["Name"]
+    for Key, Value in pairs(Results) do
+        Message = Message .. Value
+        Message = Message .. ", "
     end
 
     cMessage:Send(Player, "${Message}", {Message=Message})
