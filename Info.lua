@@ -139,12 +139,6 @@ g_PluginInfo =
                 Gives player access to travel to the spawn point.]],
             RecommendedGroups = "VIP"
         },
-        ["stargate.gdo.work"] =
-        {
-            Description = [[
-                Gives player access to set an arbitrary location as 'work'.]],
-            RecommendedGroups = "member"
-        },
         ["stargate.gdo.set"] =
         {
             Description = [[
@@ -152,15 +146,6 @@ g_PluginInfo =
                 names. A location marked as 'home' still inherits the dhd
                 abilities.]],
             RecommendedGroups = "member"
-        },
-        ["stargate.sg1.gdo"] =
-        {
-            Description = [[
-                SG-1 is established as the primary exploration tream. Allows a
-                player full access to the Stargate system which includes
-                traveling to global and player defined gates as well as
-                setting/deleting/renaming/updating as many ]],
-            RecommendedGroups = "VIP",
         }
     }
 }
