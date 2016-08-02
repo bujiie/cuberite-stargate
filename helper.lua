@@ -9,7 +9,7 @@ function Set (list)
     return set
 end
 
-ReservedWords = Set { "spawn", "nether", "overworld", "end", "last_death" }
+ReservedWords = Set { "spawn", "nether", "overworld", "end", "last_death", "last" }
 
 function IsReservedWord(Word)
     return ReservedWords[Word] ~= nil

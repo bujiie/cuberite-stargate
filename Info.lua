@@ -44,9 +44,22 @@ g_PluginInfo =
         },
         ["/dhd"] =
         {
+            Alias = "/home",
             Permission = "stargate.gdo",
             Handler = DialHomeDeviceHandler,
             HelpString = "Transports player to location set as 'home' or the last bed loation."
+        },
+        ["/work"] =
+        {
+            Permission = "stargate.gdo",
+            Handler = StargateWorkHandler,
+            HelpString = "Transports player to location set as 'work' if available."
+        },
+        ["/last"] =
+        {
+            Permission = "stargate.gdo",
+            Handler = LastLocationHandler,
+            HelpString = "Transports player to the last location before traveling."
         },
         ["/sg"] =
         {
@@ -106,6 +119,12 @@ g_PluginInfo =
                     HelpString = "List Stargates available to you.",
                     Permission = "stargate.gdo.list",
                     Handler = ListStargatesHandler
+                },
+                fetch = {
+                    Alias = "fe",
+                    HelpString = "Transports the specified player to your current location.",
+                    Permission = "stargate.gdo.fetch",
+                    Handler = StargatePlayerToYouHandler
                 }
             }
         }

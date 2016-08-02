@@ -9,5 +9,5 @@ function OnKilled(Victim, TDI, DeathMessage)
         return true
     end
 
-    return cSgDao:ManagePlayersLastDeathLocation(Victim)
+    return ManagePlayersLastDeathLocation(Victim)
 end

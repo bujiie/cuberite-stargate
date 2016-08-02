@@ -96,9 +96,6 @@ end
 
 function UpdateStargateCoordinates(Player, Name, World, X, Y, Z, Global)
     if not IsNameRegisteredToPlayer(Player, Name, Global) then
-        FailureMessage(
-            Player,
-            "Stargate is not registered to you.")
         return false
     end
 
@@ -181,9 +178,6 @@ end
 
 function ViewStargateByName(Player, Name, Global)
     if not IsNameRegisteredToPlayer(Player, Name, Global) then
-        FailureMessage(
-            Player,
-            "Stargate is not registered to you.")
         return false, nil
     end
 
@@ -210,32 +204,41 @@ function ViewStargateByName(Player, Name, Global)
 end
 
 function PlayersLastDeathCoordinates(Player)
-    if not IsNameRegisteredToPlayer(Player, "last_death", false) then
-        FailureMessage(
-            Player,
-            "You have no died yet.")
-        return false, nil
-    end
+    return ViewStargateByName(Player, "last_death", false)
+end
 
-    local Location = {}
-    local Result, DbError = StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = 'last_death' AND PlayerId = ? LIMIT 1",
-        {Player:GetUUID()},
-        function(Row)
-            Location["PosX"] = Row["PosX"]
-            Location["PosY"] = Row["PosY"]
-            Location["PosZ"] = Row["PosZ"]
-            Location["World"] = GetWorldByName(Row["World"])
-        end)
+function ManagePlayersLastDeathLocation(Player)
+    local Name = "last_death"
+    return ManagerPlayersLastLocation(Player, Name)
+end
 
-    if Result ~= nil then
-        return true, Location
+function ManagePlayersLastTeleportLocation(Player, Vector)
+    local Name = "last"
+    return ManagePlayersLastLocation(Player, Name, Vector)
+end
+
+-- function should not be called outside of dao functions
+function ManagePlayersLastLocation(Player, Name, Vector)
+    local World = Player:GetWorld()
+    local X, Y, Z
+
+    if Vector ~= nil then
+        X = Vector.x
+        Y = Vector.y
+        Z = Vector.z
     else
-        ERROR(
-            "Last death location for {Player} not found. ({Error})",
-            {Player=Player:GetName(), Error=DbError})
-        return false, nil
+        X = Player:GetPosX()
+        Y = Player:GetPosY()
+        Z = Player:GetPosZ()
     end
+    local DeathLocationExists, Data = ViewStargateByName(Player, Name, false)
+
+    if not DeathLocationExists then
+        AddStargate(Player, World, Name, X, Y, Z, false)
+    else
+        UpdateStargateCoordinates(Player, Name, World, X, Y, Z, false)
+    end
+    return true
 end
 
 function IsPrivateOrGlobalNameRegisteredToPlayer(Player, Name)

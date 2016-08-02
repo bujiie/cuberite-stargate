@@ -17,8 +17,14 @@ Transport player to his/her last place of death. (Note, this includes pits of la
 `/ld info` -> stargate.lastdeath
 Shows the player's last place of death coordinates, but does not transport them.
 
-`/dhd` -> stargate.gdo
+`/dhd` or `/home`-> stargate.gdo
 Transport player to his/her Stargate labeled 'home'. Same result as `/sg home`
+
+`/work` -> stargate.gdo
+Transport player to his/her Stargate labeled 'work' if available.
+
+`/last` -> stargate.gdo
+Transport plaer to his/her last location before traveling.
 
 `/sg <player_name|stargate_name>` -> stargate.gdo
 Transport player to designated player or Stargate.

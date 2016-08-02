@@ -15,14 +15,24 @@ function TestHandler(Split, Player)
     return true
 end
 
-function DialHomeDeviceHandler(Split, Player)
-    local DEFAULT_LOCATION = "home"
 
-    if not IsPrivateOrGlobalNameRegisteredToPlayer(Player, DEFAULT_LOCATION) then
-        FailureMessage(Player, "Stargate could not connect to '{Home}'.", {Home=DEFAULT_LOCATION})
+-- Handlers that transport player to a specific named reference. These
+-- act more as aliases to named references.
+function StargateWorkHandler(Split, Player)
+    return DialToLocationHandler(Split, Player, "work")
+end
+
+function DialHomeDeviceHandler(Split, Player)
+    return DialToLocationHandler(Split, Player, "home")
+end
+
+-- Should only be called from another function
+function DialToLocationHandler(Split, Player, Name)
+    if not IsPrivateOrGlobalNameRegisteredToPlayer(Player, Name) then
+        FailureMessage(Player, "Chevron seven could not lock onto '{Location}'.", {Location=Name})
         return true
     else
-        TransportPlayerToCoordinatesByReferenceName(Player, DEFAULT_LOCATION, false)
+        TransportPlayerToCoordinatesByReferenceName(Player, Name, false)
         return true
     end
 end
@@ -37,8 +47,27 @@ function StargateTravelHandler(Split, Player)
     elseif(IsPrivateOrGlobalNameRegisteredToPlayer(Player, Target)) then
         return TransportPlayerToCoordinatesByReferenceName(Player, Target, false)
     else
-        FailureMessage(Player, "Chevron seven could not lock")
+        FailureMessage(Player, "Chevron seven could not lock.")
     end
+    return true
+end
+
+function StargatePlayerToYouHandler(Split, Player)
+    local PlayerToFetchName = Split[3]
+    local PlayerToFetch = GetPlayerByName(PlayerToFetchName)
+
+    if PlayerToFetch == nil then
+        FailureMessage(Player, "Player '{Name}' does not exist.", {Name=PlayerToFetch})
+        return true
+    end
+
+    if TransportPlayerToPlayer(PlayerToFetch, Player) then
+        SuccessMessage(PlayerToFetch, "{Source} has brought you to their location.", {Source=Player:GetName()})
+        SuccessMessage(Player, "{Target} survived the wormhole!", {Target=PlayerToFetchName})
+    else
+        FailureMessage(Player, "Chevron seven could not lock. {Target} not transported.", {Target=PlayerToFetchName})
+    end
+
     return true
 end
 
@@ -206,6 +235,22 @@ function ListStargatesHandler(Split, Player)
     end
 
     return true
+end
+
+function LastLocationHandler(Split, Player)
+    local Status, Result = ViewStargateByName(Player, "last", false)
+
+    if not Status then
+        FailureMessage(Player, "You have not traveled through a Stargate yet.")
+        return true
+    end
+
+    local World = Result["World"]
+    local PosX = Result["PosX"]
+    local PosY = Result["PosY"]
+    local PosZ = Result["PosZ"]
+
+    return TransportPlayerToCoordinates(Player, World, PosX, PosY, PosZ)
 end
 
 function LastDeathLocationHandler(Split, Player)
