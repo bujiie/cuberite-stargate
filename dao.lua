@@ -3,22 +3,15 @@
 -- Date: 7/24/16
 --
 
-cSgDao = {}
-cSgDao.__index = cSgDao
+StargateDb = nil
 
 local StargateDbName = "stargate"
 local StargateDbFilename = StargateDbName:gsub("^%l", string.lower) .. ".sqlite"
 local StargateDbTableName = StargateDbName:gsub("^%l", string.upper)
 
-function cSgDao:InitializeStargateDb()
+
+function InitializeDb()
     local DbError
-    StargateDb, DbError = NewSQLiteDB(StargateDbFilename)
-
-    if not(StargateDb) then
-        cLogger:ERROR("Cannot open the ${DbName} database.", {DbName = StargateDbName})
-        cLogger:ERROR("SQLite: ${DbError}", {DbError = DbError})
-    end
-
     local StargateDbColumns = {
         "ID INTEGER PRIMARY KEY AUTOINCREMENT",
         "PlayerId VARCHAR(255) NOT NULL",
@@ -31,175 +24,132 @@ function cSgDao:InitializeStargateDb()
         "Enabled INTEGER default 1"
     }
 
-    if(not(StargateDb:CreateDBTable(StargateDbTableName, StargateDbColumns))) then
-        cLogger:ERROR("Could not create ${DbName} columns.", {DbName = StargateDbName})
+    StargateDb, DbError = NewSQLiteDB(StargateDbFilename)
+
+    if StargateDb then
+        if(StargateDb:CreateDBTable(StargateDbTableName, StargateDbColumns)) then
+            INFO(
+                "Columns created in {Database} successfully.",
+                {Database=StargateDbName})
+        else
+            ERROR(
+                "Could not create columns in {Database}.",
+                {Database=StargateDbName})
+        end
+    else
+        ERROR(
+            "Cannot open {Database} database. ({Error})",
+            {Database=StargateDbName, Error=DbError})
+        ERROR(
+            "{Error}",
+            {Error=DbError})
     end
+    return true
 end
 
-function cSgDao:AddStargate(a_Player, a_World, a_Name, a_PosX, a_PosY, a_PosZ, a_Global)
-    if(cSgDao:IsStargateNameRegistered(a_Player, a_Name, a_Global)) then
+function AddStargate(Player, World, Name, X, Y, Z, Global)
+    if IsNameRegisteredToPlayer(Player, Name, Global) then
         return false
     end
 
-    local result = StargateDb:ExecuteStatement(
+    local Result, DbError = StargateDb:ExecuteStatement(
         "INSERT INTO Stargate (PlayerId, World, Name, PosX, PosY, PosZ, Global) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        {a_Player:GetUUID(), a_World:GetName(), a_Name, a_PosX, a_PosY, a_PosZ, a_Global}
-    )
+        {Player:GetUUID(), World:GetName(), Name, X, Y, Z, Global})
 
-    if(result == nil) then
-        cLogger:WARN(
-            "Stargate ${StargateName} added by ${PlayerName} failed.",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
-        return false
-    else
-        cLogger:INFO(
-            "Stargate ${StargateName} added by ${PlayerName} successful!",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
+    if Result ~= nil then
+        INFO(
+            "Stargate '{Stargate}' was added by {Player} to the database.",
+            {Stargate=Name, Player=Player:GetName()})
         return true
-    end
-end
-
-function cSgDao:DeleteStargate(a_Player, a_World, a_Name)
-    local result = StargateDb:ExecuteStatement(
-        "UPDATE Stargate SET Enabled=0 WHERE Name = ? AND World = ? AND PlayerId = ?",
-        {a_Name, a_World:GetName(), a_Player:GetUUID()}
-    )
-
-    if(result == nil)  then
-        cLogger:WARN(
-            "Stargate ${StargateName} added by ${PlayerName} was not found. Cannot decommission.",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
+    else
+        ERROR(
+            "Stargate '{Stargate}' could not be added by {Player} to the database. ({Error})",
+            {Stargate=Name, Player=Player:GetName(), Error=DbError})
         return false
-    else
-        cLogger:INFO(
-            "Stargate ${StargateName} added by ${PlayerName} was decommissioned.",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
-        return true
     end
 end
 
-
-function cSgDao:DeletePlayersStargate(a_Player, a_Name)
-    local result = StargateDb:ExecuteStatement(
-        "UPDATE Stargate SET Enabled=0 WHERE Name = ? AND PlayerId = ? AND Global = 0",
-        {a_Name, a_Player:GetUUID()}
-    )
-
-    if(result == nil)  then
-        cLogger:WARN(
-            "Stargate ${StargateName} added by ${PlayerName} was not found. Cannot decommission.",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
+function UpdateStargateName(Player, OldName, NewName, Global)
+    if not IsNameRegisteredToPlayer(Player, OldName, Global) then
+        FailureMessage(
+            Player,
+            "Stargate is not registered to you.")
         return false
-    else
-        cLogger:INFO(
-            "Stargate ${StargateName} added by ${PlayerName} was decommissioned.",
-            {StargateName = a_Name, PlayerName = a_Player:GetName()})
-        return true
     end
-end
 
-function cSgDao:UpdateStargateCoords(Player, World, PosX, PosY, PosZ)
-    local result = StargateDb:ExecuteStatement(
-        "UPDATE Stargate SET PosX = ?, PosY = ?, PosZ = ? WHERE World = ? AND PlayerId = ? AND Enabled = 1",
-        {PosX, PosY, PosZ, World:GetName(), Player:GetUUID()}
-    )
-    return true
-end
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET Name = ? WHERE Name = ? AND PlayerId = ? AND Enabled = 1",
+        {NewName, OldName, Player:GetUUID()})
 
-function cSgDao:UpdateStargate(a_Player, a_World, a_OldName, a_NewName)
-    local result = StargateDb:ExecuteStatement(
-        "UPDATE Stargate SET Name = ? WHERE Name = ? AND World = ? AND PlayerId = ? AND Enabled = 1",
-        {a_NewName, a_OldName, a_World:GetName(), a_Player:GetUUID()}
-    )
-
-    if(result == nil) then
-        cLogger:WARN(
-            "Stargate name '${StargateName}' was not updated.",
-            {StargateName = a_OldName}
-        )
+    if Result ~= nil then
+        INFO(
+            "Stargate name was updated: {Old} -> {New}",
+            {Old=OldName, New=NewName})
+        return true
+    else
+        ERROR(
+            "Stargate '{Stargate}' was not updated. ({Error})",
+            {Stargate=OldName, Error=DbError})
         return false
-    else
-        cLogger:INFO(
-            "Stargate '${StargateOld}' name was updated to '${StargateNew}'.",
-            {StargateOld = a_OldName, StargateNew = a_NewName}
-        )
+    end
+end
+
+function UpdateStargateCoordinates(Player, Name, World, X, Y, Z, Global)
+    if not IsNameRegisteredToPlayer(Player, Name, Global) then
+        FailureMessage(
+            Player,
+            "Stargate is not registered to you.")
+        return false
+    end
+
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET PosX = ?, PosY = ?, PosZ = ?, World = ?, Global = ? WHERE Name = ? AND PlayerId = ? AND Enabled = 1",
+        {X, Y, Z, World:GetName(), Global, Name, Player:GetUUID()})
+
+    if Result ~= nil then
+        INFO(
+            "Stargate '{Stargate}' coordinates owned by {Owner} was updated.",
+            {Stargate=Name, Owner=Player:GetName()})
         return true
-    end
-end
-
-function cSgDao:PlayerLastDeathLocation(Player)
-    local Result = {}
-    StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = 'last_death' AND PlayerId = ? LIMIT 1",
-        {Player:GetUUID()},
-        function(Row)
-            Result["PosX"] = Row["PosX"]
-            Result["PosY"] = Row["PosY"]
-            Result["PosZ"] = Row["PosZ"]
-            Result["World"] = Row["World"]
-        end
-    )
-
-    return Result
-end
-
-function cSgDao:PlayerLastDeathLocationExists(Player)
-    local Result = 0
-    StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name ='last_death' AND PlayerId = ? LIMIT 1",
-        {Player:GetUUID()},
-        function(Row)
-            Result = Result + 1
-        end
-    )
-
-    return Result > 0
-end
-
-
--- Should be called OnKilled hook
-function cSgDao:ManagePlayersLastDeathLocation(Player)
-    local World = Player:GetWorld()
-    local PosX = Player:GetPosX()
-    local PosY = Player:GetPosY()
-    local PosZ = Player:GetPosZ()
-
-    if(cSgDao:PlayerLastDeathLocationExists(Player)) then
-        return cSgDao:UpdateStargateCoords(Player, World, PosX, PosY, PosZ)
     else
-        return cSgDao:AddStargate(Player, World, "last_death", PosX, PosY, PosZ, false)
+        ERROR(
+            "Stargate '{Stargate}' coordinates were not updated. ({Error})",
+            {Stargate=Name, Error=DbError})
+        return false
     end
-    return true
 end
 
-
-function cSgDao:ViewStargate(a_Player, a_World, a_Name, a_Global)
-    local Resource = {}
-    Resource["World"] = a_World
-
-    local result = StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = ? AND World = ? AND PlayerId = ? AND Global = ? AND Enabled = 1 LIMIT 1",
-        {a_Name, a_World:GetName(), a_Player:GetUUID(), a_Global},
-        function(a_Row)
-            Resource["PosX"] = a_Row["PosX"]
-            Resource["PosY"] = a_Row["PosY"]
-            Resource["PosZ"] = a_Row["PosZ"]
-        end
-    )
-
-    if(result == nil) then
-        cLogger:ERROR(
-            "Could not retrieve information about '${StargateName}'.",
-            {StargateName = a_Name})
+function DeleteStargate(Player, Name, Global)
+    if not IsNameRegisteredToPlayer(Player, Name, Global) then
+        FailureMessage(
+            Player,
+            "Stargate is not registered to you.")
+        return false
     end
-    return Resource
+
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "UPDATE Stargate SET Enabled = 0 WHERE Name = ? AND PlayerId = ? AND Global = ? AND Enabled = 1",
+        {Name, Player:GetUUID(), Global})
+
+    if Result ~= nil then
+        INFO(
+            "Stargate '{Stargate}' owned by {Owner} was disabled.",
+            {Stargate=Name, Owner=Player:GetName()})
+        return true
+    else
+        ERROR(
+            "Stargate '{Stargate}' was not disabled. ({Error})",
+            {Stargate=Name, Error=DbError})
+        return false
+    end
 end
 
-function cSgDao:ViewStargateList(Player, Offset, Limit)
-    local Resource = {}
+function ViewStargatesAccessibleByPlayer(Player, Offset, Limit)
+    local Locations = {}
     local Index = 0
-    local result = StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE PlayerId = ? AND Global = 0 AND Enabled = 1 LIMIT ? OFFSET ?",
+
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE PlayerId = ? AND Enabled = 1 LIMIT ? OFFSET ?",
         {Player:GetUUID(), Limit, Offset},
         function(Row)
             local World = Row["World"]
@@ -215,120 +165,142 @@ function cSgDao:ViewStargateList(Player, Offset, Limit)
                 Name = Name .. " (?)"
             end
 
-            Resource[Index] = Name
+            Locations[Index] = Name
             Index = Index + 1
+        end)
+
+    if Result ~= nil then
+        return true, Locations
+    else
+        ERROR(
+            "Could not retrieve Stargates accessible by {Player}. ({Error})",
+            {Player=Player:GetName(), Error=DbError})
+        return false, nil
+    end
+end
+
+function ViewStargateByName(Player, Name, Global)
+    if not IsNameRegisteredToPlayer(Player, Name, Global) then
+        FailureMessage(
+            Player,
+            "Stargate is not registered to you.")
+        return false, nil
+    end
+
+    local Location = {}
+
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE Name = ? AND PlayerId = ? AND Global = ? AND Enabled = 1 LIMIT 1",
+        {Name, Player:GetUUID(), Global},
+        function(Row)
+            Location["PosX"] = Row["PosX"]
+            Location["PosY"] = Row["PosY"]
+            Location["PosZ"] = Row["PosZ"]
+            Location["World"] = GetWorldByName(Row["World"])
+        end)
+
+    if Result ~= nil then
+        return true, Location
+    else
+        ERROR(
+            "Location for {Player} not found. ({Error})",
+            {Player=Player:GetName(), Error=DbError})
+        return false, nil
+    end
+end
+
+function PlayersLastDeathCoordinates(Player)
+    if not IsNameRegisteredToPlayer(Player, "last_death", false) then
+        FailureMessage(
+            Player,
+            "You have no died yet.")
+        return false, nil
+    end
+
+    local Location = {}
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE Name = 'last_death' AND PlayerId = ? LIMIT 1",
+        {Player:GetUUID()},
+        function(Row)
+            Location["PosX"] = Row["PosX"]
+            Location["PosY"] = Row["PosY"]
+            Location["PosZ"] = Row["PosZ"]
+            Location["World"] = GetWorldByName(Row["World"])
+        end)
+
+    if Result ~= nil then
+        return true, Location
+    else
+        ERROR(
+            "Last death location for {Player} not found. ({Error})",
+            {Player=Player:GetName(), Error=DbError})
+        return false, nil
+    end
+end
+
+function IsPrivateOrGlobalNameRegisteredToPlayer(Player, Name)
+    local Count = 0
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE PlayerId = ? AND Name = ? AND Enabled = 1 LIMIT 1",
+        {Player:GetUUID(), Name},
+        function(Row)
+            Count = Count + 1
         end
     )
 
-    if(result == nil) then
-        cLogger:ERROR(
-            "Could not retrieve list of Stargates.")
+    if Result ~= nil then
+        return Count > 0
+    else
+        ERROR(
+            "Stargate '{Stargate}' could not be found. ({Error})",
+            {Stargate=Name, Error=DbError})
+        return false
     end
-    return Resource
 end
 
-
-function cSgDao:ViewStargatesAccessibleByPlayer(Player, World, Name)
-    local Resource = {}
-    Resource["World"] = World
-
-    -- If a Stargate registered to a player has the same name as a globally defined Stargate, the player gate
-    -- takes precedence.
-    local result = StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = ? AND World = ? AND (PlayerId = ? OR Global = 1) AND Enabled = 1 LIMIT 1",
-        {Name, World:GetName(), Player:GetUUID()},
-        function(Rpw)
-            Resource["PosX"] = Rpw["PosX"]
-            Resource["PosY"] = Rpw["PosY"]
-            Resource["PosZ"] = Rpw["PosZ"]
+function IsNameRegisteredToPlayer(Player, Name, Global)
+    local Count = 0
+    local Result, DbError = StargateDb:ExecuteStatement(
+        "SELECT * FROM Stargate WHERE PlayerId = ? AND Name = ? AND Global = ? AND Enabled = 1 LIMIT 1",
+        {Player:GetUUID(), Name, Global},
+        function(Row)
+            Count = Count + 1
         end
     )
 
-    if(result == nil) then
-        cLogger:ERROR(
-            "Could not retrieve information about '${StargateName}'.",
-            {StargateName = Name})
+    if Result ~= nil then
+        return Count > 0
+    else
+        ERROR(
+            "Stargate '{Stargate}' could not be found. ({Error})",
+            {Stargate=Name, Error=DbError})
+        return false
     end
-    return Resource
 end
 
-
-
-
-
-function cSgDao:IsStargateNameRegistered(a_Player, a_Name, a_Global)
-    if(cSgDao:StargateNameMatchesPlayer(a_Name)) then
-        cMessage:SendFailure("Stargate name cannot match a Player's name.")
-        return true
-    end
-
-    if(a_Global and cSgDao:StargateNameRegisteredAsGlobal(a_Name)) then
-        cMessage:SendFailure(a_Player, "Global Stragate name already exists.")
-        return true
-    elseif(not(a_Global) and cSgDao:StargateNameRegisteredToPlayer(a_Player, a_Name)) then
-        cMessage:SendFailure(a_Player, "You already have a Stargate with that name.")
-        return true
-    end
-    return false
+function IsPrivateNameRegisteredToPlayer(Player, Name)
+    return IsNameRegisteredToPlayer(Player, Name, false)
 end
 
-function cSgDao:IsStargateAccessibleByPlayer(Player, Name)
-    return (cSgDao:StargateNameRegisteredAsGlobal(Name) or
-            cSgDao:StargateNameRegisteredToPlayer(Player, Name))
+function IsGlobalNameRegisteredToPlayer(Player, Name)
+    return IsNameRegisteredToPlayer(Player, Name, true)
 end
 
-function cSgDao:StargateNameRegisteredToPlayer(a_Player, a_Name)
-    local RowCount = 0
-
-    StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = ? AND PlayerId = ? AND Enabled = 1 LIMIT 1",
-        {a_Name, a_Player:GetUUID()},
-        function(a_Row)
-            RowCount = RowCount + 1
-        end
-    )
-
-    return RowCount > 0
-end
-
-function cSgDao:StargateNameRegisteredAsGlobal(a_Name)
-    local RowCount = 0
-
-    StargateDb:ExecuteStatement(
-        "SELECT * FROM Stargate WHERE Name = ? AND Global = 1 AND Enabled = 1  LIMIT 1",
-        {a_Name},
-        function(a_Row)
-            RowCount = RowCount + 1
-        end
-    )
-    return RowCount > 0
-end
-
--- Should not be used as a standalone function. To be used as part of
--- a helper function.
-function cSgDao:StargateNameMatchesPlayer(a_Name)
-    return (cSgDao:GetPlayerByName(a_Name) ~= nil)
-end
-
-function cSgDao:GetPlayerByName(a_PlayerName)
-    local Player
+function GetPlayerByName(PlayerName)
+    local Result
     cRoot:Get():ForEachPlayer(
-        function(a_Player)
-            if(a_Player:GetName() == a_PlayerName) then
-                Player = a_Player
+        function(Player)
+            if(Player:GetName() == PlayerName) then
+                Result = Player
             end
-        end
-    )
-    return Player
+        end)
+    return Result
 end
 
-function cSgDao:GetPlayerByUUID(a_PlayerUUID)
-    cRoot:Get():ForEachPlayer(
-        function(a_Player)
-            if(a_Player:GetUUID() == a_PlayerUUID) then
-                return a_Player
-            end
-        end
-    )
-    return nil
+function DoesStargateNameMatchPlayers(Name)
+    return GetPlayerByName(Name) ~= nil
+end
+
+function GetWorldByName(WorldName)
+    return cRoot:Get():GetWorld(WorldName)
 end

@@ -6,7 +6,7 @@
 g_PluginInfo =
 {
     Name = "Stargate",
-    Version = "1",
+    Version = "3",
     Date = "2016-07-24",
     SourceLocation = "https://github.com/bujiie/cuberite-stargate",
     Description = [[
@@ -16,6 +16,12 @@ g_PluginInfo =
         an admin to update any player's saved locations.]],
     Commands =
     {
+        ["/test"] =
+        {
+            Permission = "stargate.test",
+            HelpString = "Testing",
+            Handler = TestHandler
+        },
         ["/ld"] =
         {
             Permission = "stargate.gdo.lastdeath",
@@ -79,6 +85,13 @@ g_PluginInfo =
                     HelpString = "Rename a Stargate.",
                     Permission = "stargate.gdo.rename",
                     Handler = RenameStargateHandler
+                },
+                update =
+                {
+                    Alias = "up",
+                    HelpString = "Update the Stargate with the current coordinates.",
+                    Permission = "stargate.gdo.update",
+                    Handler = UpdateStargateHandler
                 },
                 remove =
                 {

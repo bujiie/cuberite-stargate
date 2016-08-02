@@ -3,38 +3,41 @@
 -- Date: 7/24/16
 --
 
-function Set (list)
-    local set = {}
-    for _, l in ipairs(list) do set[l] = true end
-    return set
-end
+function TestHandler(Split, Player)
+    local TestCount, FailureCount = RunTests(Split, Player)
 
+    if FailureCount > 0 then
+        FailureMessage(Player, FailureCount .. " of " .. TestCount .. " Tests failed.")
+    else
+        SuccessMessage(Player, "All " .. TestCount .. " tests passed.")
+    end
 
-ReservedWords = Set { "spawn", "nether", "overworld", "end", "last_death" }
-
-function IsReservedWord(Word)
-    return (ReservedWords[Word] ~= nil)
+    return true
 end
 
 function DialHomeDeviceHandler(Split, Player)
     local DEFAULT_LOCATION = "home"
 
-    if(cSgDao:StargateNameRegisteredToPlayer(Player, DEFAULT_LOCATION)) then
-        return cSgAction:StargateToCoordsByReferenceName(Player, DEFAULT_LOCATION, false)
+    if not IsPrivateOrGlobalNameRegisteredToPlayer(Player, DEFAULT_LOCATION) then
+        FailureMessage(Player, "Stargate could not connect to '{Home}'.", {Home=DEFAULT_LOCATION})
+        return true
+    else
+        TransportPlayerToCoordinatesByReferenceName(Player, DEFAULT_LOCATION, false)
+        return true
     end
-    cMessage:SendFailure(Player, "Stargate cannot connect. Home not found.")
-    return true
 end
 
 function StargateTravelHandler(Split, Player)
-    local TargetLocation = Split[2]
+    local Target = Split[2]
 
-    if(TargetLocation == "spawn") then
+    if(Target == "spawn") then
         return SpawnPointHandler(Split, Player)
-    elseif(cSgDao:StargateNameMatchesPlayer(TargetLocation)) then
-        return cSgAction:StargatePlayerToPlayer(Player, TargetLocation)
-    elseif(cSgDao:IsStargateAccessibleByPlayer(Player, TargetLocation)) then
-        return cSgAction:TravelToLocationByReferenceName(Player, TargetLocation, false)
+    elseif(DoesStargateNameMatchPlayers(Target)) then
+        return TransportPlayerToPlayer(Player, Target)
+    elseif(IsPrivateOrGlobalNameRegisteredToPlayer(Player, Target)) then
+        return TransportPlayerToCoordinatesByReferenceName(Player, Target, false)
+    else
+        FailureMessage(Player, "Chevron seven could not lock")
     end
     return true
 end
@@ -42,20 +45,20 @@ end
 function SetStargateHandler(Split, Player)
     local ProposedName = Split[3]
 
-    if(cSgDao:StargateNameMatchesPlayer(ProposedName)) then
-        cMessage:SendFailure(Player, "'${ProposedName}' coincides with a Player's name. Choose a different name.", {ProposedName=ProposedName})
+    if(DoesStargateNameMatchPlayers(ProposedName)) then
+        FailureMessage(Player, "'{ProposedName}' coincides with a Player's name. Choose a different name.", {ProposedName=ProposedName})
         return true
     end
 
     if(IsReservedWord(ProposedName)) then
-        cMessage:SendFailure(Player, "'${Word}' is a reserved word.", {Word=ProposedName})
+        FailureMessage(Player, "'{Word}' is a reserved word.", {Word=ProposedName})
         return true
     end
 
-    if(cSgDao:AddStargate(Player, Player:GetWorld(), ProposedName, Player:GetPosX(), Player:GetPosY(), Player:GetPosZ(), false)) then
-        cMessage:Send(Player, "Stargate added to the system.")
+    if AddStargate(Player, Player:GetWorld(), ProposedName, Player:GetPosX(), Player:GetPosY(), Player:GetPosZ(), false) then
+        SuccessMessage(Player, "Stargate '{Stargate}' added to the system.", {Stargate=ProposedName})
     else
-        cMessage:SendFailure(Player, "Could not lock onto coordinates. Stargate not added.")
+        FailureMessage(Player, "Could not lock onto coordinates. Stargate not added.")
     end
     return true
 end
@@ -64,20 +67,61 @@ function RenameStargateHandler(Split, Player)
     local OldName = Split[3]
     local NewName = Split[4]
 
-    if(not(cSgDao:StargateNameRegisteredToPlayer(Player, OldName))) then
-        cMessage:SendFailure(Player, "Stargate with name '${StargateName}' is not registered in your system.", {StargateName=OldName})
+    if(DoesStargateNameMatchPlayers(OldName)) then
+        FailureMessage(Player, "'{Old}' coincides with a Player's name. Choose a different name.", {Old=OldName})
         return true
     end
 
-    if(cSgDao:StargateNameMatchesPlayer(NewName)) then
-        cMessage:SendFailure(Player, "'${ProposedName}' coincides with a Player's name. Choose a different name.", {ProposedName=NewName})
+    if(DoesStargateNameMatchPlayers(NewName)) then
+        FailureMessage(Player, "'{New}' coincides with a Player's name. Choose a different name.", {New=NewName})
         return true
     end
 
-    if(cSgDao:UpdateStargate(Player, Player:GetWorld(), OldName, NewName)) then
-        cMessage:SendSuccess(Player, "Stargate was renamed: ${OldName} -> ${NewName}", {OldName = OldName, NewName = NewName})
+    if(IsReservedWord(NewName)) then
+        FailureMessage(Player, "'{Word}' is a reserved word.", {Word=NewName})
+        return true
+    end
+
+    if not IsPrivateOrGlobalNameRegisteredToPlayer(Player, OldName) then
+        FailureMessage(Player, "'{Old}' Stargate is not registered to your system.", {Old=OldName})
+        return true
+    end
+
+    if IsPrivateOrGlobalNameRegisteredToPlayer(Player, NewName) then
+        FailureMessage(Player, "'{New}' Stargate is not registered to your system.", {New=NewName})
+        return true
+    end
+
+    if UpdateStargateName(Player, OldName, NewName, false) then
+        SuccessMessage(Player, "Stargate name was updated: {Old} -> {New}", {Old=OldName, New=NewName})
     else
-        cMessage:SendFailure(Player, "Stargate could not be renamed.")
+        FailureMessage(Player, "Stargate name could not be updated.")
+    end
+    return true
+end
+
+function UpdateStargateHandler(Split, Player)
+    local Name = Split[3]
+
+    if(DoesStargateNameMatchPlayers(Name)) then
+        FailureMessage(Player, "'{Name}' coincides with a Player's name.", {Name=Name})
+        return true
+    end
+
+    if not IsPrivateOrGlobalNameRegisteredToPlayer(Player, Name) then
+        FailureMessage(Player, "'{Name}' Stargate is not registered to your system.", {Name=Name})
+        return true
+    end
+
+    if(IsReservedWord(Name)) then
+        FailureMessage(Player, "'{Word}' is a reserved word.", {Word=Name})
+        return true
+    end
+
+    if UpdateStargateCoordinates(Player, Name, Player:GetWorld(), Player:GetPosX(), Player:GetPosY(), Player:GetPosZ(), false) then
+        SuccessMessage(Player, "Stargate coordinates were updated.")
+    else
+        FailureMessage(Player, "Stargate coordinates could not be updated.")
     end
     return true
 end
@@ -85,17 +129,32 @@ end
 function RemoveStargateHandler(Split, Player)
     local Target = Split[3]
 
-    if(not(cSgDao:StargateNameRegisteredToPlayer(Player, Target))) then
-        cMessage:SendFailure(Player, "No Stargate registered to you with name '${StargateName}'.", {StargateName=Target})
-        return false
+    local IsRegisteredGlobal = IsPrivateOrGlobalNameRegisteredToPlayer(Player, Target)
+    local IsRegisteredPrivate = IsPrivateOrGlobalNameRegisteredToPlayer(Player, Target)
+
+    if not IsRegisteredPrivate and not IsRegisteredGlobal then
+        FailureMessage(Player, "No Stargate registered to you with name '${StargateName}'.", {StargateName=Target})
+        return true
     end
 
-    if(cSgDao:DeletePlayersStargate(Player, Target)) then
-        cMessage:SendSuccess(Player, "Stargate '${StargateName}' was decommissioned.", {StargateName = Target})
-    else
-        cMessage:SendFailure(Player, "Stargate '${StargateName}' was not decommissioned.", {StargateName = Target})
+    if(IsReservedWord(Target)) then
+        FailureMessage(Player, "'{Word}' is a reserved word.", {Word=Target})
+        return true
     end
 
+    if IsRegisteredPrivate then
+        if DeleteStargate(Player, Target, false) then
+            SuccessMessage(Player, "Stargate '{Stargate}' was decommissioned.", {Stargate=Target})
+        else
+            FailureMessage(Player, "Stargate '{Stargate}' was not decommissioned.", {Stargate=Target})
+        end
+    elseif IsRegisteredGlobal then
+        if DeleteStargate(Player, Target, true) then
+            EveryoneSuccessMessage("Stargate '{Stargate}' was decommissioned by {Player}.", {Stargate=Target, Player=Player:GetName()})
+        else
+            FailureMessage(Player, "Stargate '{Stargate}' was not decommissioned.", {Stargate=Target})
+        end
+    end
     return true
 end
 
@@ -103,9 +162,9 @@ function SpawnPointHandler(Split, Player)
     World = cRoot:Get():GetDefaultWorld()
 
     if(World ~= nil) then
-        return cSgAction:StargatePlayerToCoords(Player, World, World:GetSpawnX(), World:GetSpawnY(), World:GetSpawnZ())
+        return TransportPlayerToCoordinates(Player, World, World:GetSpawnX(), World:GetSpawnY(), World:GetSpawnZ())
     end
-    cMessage:SendFailure(Player, "A default world was not found. Cannot travel to spawn point.")
+    FailureMessage(Player, "A default world was not found. Cannot travel to spawn point.")
     return true
 end
 
@@ -113,254 +172,69 @@ function SpawnPointInfoHandler(Split, Player)
     World = cRoot:Get():GetDefaultWorld()
 
     if(World ~= nil) then
-        cMessage:Send(Player, "Spawn Point: <${X}, ${Y}, ${Z}>", {X=World:GetSpawnX(), Y=World:GetSpawnY(), Z=World:GetSpawnZ()})
+        SuccessMessage(Player, "Spawn Point: <{X}, {Y}, {Z}>", {X=World:GetSpawnX(), Y=World:GetSpawnY(), Z=World:GetSpawnZ()})
     else
-        cMessage:SendFailure(Player, "A default world was not found. Cannot travel to spawn point.")
+        FailureMessage(Player, "A default world was not found. Cannot travel to spawn point.")
     end
     return true
 end
 
 function ListStargatesHandler(Split, Player)
+    local Status
     local Results
     local DEFAULT_LIMIT = 10
     local DEFAULT_OFFSET = 0
     local Message = ""
 
     if(#Split == 2) then
-        Results = cSgDao:ViewStargateList(Player, DEFAULT_OFFSET, DEFAULT_LIMIT)
+        Status, Results = ViewStargatesAccessibleByPlayer(Player, DEFAULT_OFFSET, DEFAULT_LIMIT)
     elseif(#Split == 3) then
-        Results = cSgDao:ViewStargateList(Player, Split[3], DEFAULT_LIMIT)
+        Status, Results = ViewStargatesAccessibleByPlayer(Player, Split[3], DEFAULT_LIMIT)
     elseif(#Split == 4) then
-        Results = cSgDao:ViewStargateList(Player, Split[3], Split[4])
+        Status, Results = ViewStargatesAccessibleByPlayer(Player, Split[3], Split[4])
     end
 
-    for Key, Value in pairs(Results) do
-        Message = Message .. Value
-        Message = Message .. ", "
+    if Status then
+        for Key, Value in pairs(Results) do
+            Message = Message .. Value
+            Message = Message .. ", "
+        end
+
+        SuccessMessage(Player, "{Message}", {Message=Message})
+    else
+        FailureMessage(Player, "Could not load Stargate system.")
     end
 
-    cMessage:Send(Player, "${Message}", {Message=Message})
     return true
 end
-
-
-function test(Split, Player)
-    cMessage:SendSuccess(Player, "Hi")
-    cLogger:INFO("I'm Here")
-    return true
-end
-
 
 function LastDeathLocationHandler(Split, Player)
-    if(not(cSgDao:PlayerLastDeathLocationExists(Player))) then
-        cMessage:SendFailure(Player, "You have not died yet.")
+    local Status, Result = PlayersLastDeathCoordinates(Player)
+    if not Status then
+        FailureMessage(Player, "You have not died yet.")
         return true
     end
-
-    local Result = cSgDao:PlayerLastDeathLocation(Player)
-    local World = cRoot:Get():GetWorld(Result["World"])
-    local PosX = Result["PosX"]
-    local PosY = Result["PosY"]
-    local PosZ = Result["PosZ"]
-
-    return cSgAction:StargatePlayerToCoords(Player, World, PosX, PosY, PosZ)
-end
-
-function LastDeathLocationInfoHandler(Split, Player)
-    if(not(cSgDao:PlayerLastDeathLocationExists(Player))) then
-        cMessage:SendFailure(Player, "You have not died yet.")
-        return true
-    end
-
-    local Result = cSgDao:PlayerLastDeathLocation(Player)
     local World = Result["World"]
     local PosX = Result["PosX"]
     local PosY = Result["PosY"]
     local PosZ = Result["PosZ"]
 
-    cMessage:Send(Player, "Last Death: ${World} - <${X}, ${Y}, ${Z}>", {World=World, X=PosX, Y=PosY, Z=PosZ})
+    return TransportPlayerToCoordinates(Player, World, PosX, PosY, PosZ)
+end
+
+function LastDeathLocationInfoHandler(Split, Player)
+    local Status, Result = PlayersLastDeathCoordinates(Player)
+
+    if not Status then
+        FailureMessage(Player, "You have not died yet.")
+        return true
+    end
+
+    local World = Result["World"]:GetName()
+    local PosX = Result["PosX"]
+    local PosY = Result["PosY"]
+    local PosZ = Result["PosZ"]
+
+    SuccessMessage(Player, "Last Death: {World} - <{X}, {Y}, {Z}>", {World=World, X=PosX, Y=PosY, Z=PosZ})
     return true
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function StargateSetHandler(a_Split, a_Player)
-    local Global    = false
-    local World     = a_Player:GetWorld()
-    local PosX      = a_Player:GetPosX()
-    local PosY      = a_Player:GetPosY()
-    local PosZ      = a_Player:GetPosZ()
-    local Name      = ""
-
-    if(#a_Split == 3) then
-        Name = a_Split[3]
-        Global = CheckGlobalFlag(a_Split[2])
-    else
-        Name = a_Split[2]
-    end
-
-    if(cSgDao:AddStargate(a_Player, World, Name, PosX, PosY, PosZ, Global)) then
-        cMessage:SendSuccess(a_Player, "Stargate '${StargateName}' added to the system.", {StargateName = Name})
-        return true
-    else
-        cMessage:SendFailure(a_Player, "Stargate '${StargateName}' could not be added.", {StargateName = Name})
-        return false
-    end
-end
-
-function DhdHandler(a_Split, a_Player)
-    if(not(cSgDao:StargateNameRegisteredToPlayer(a_Player, "home"))) then
-        cMessage:SendFailure(a_Player, "Stargate cannot connect. Home not found.")
-        return false
-    end
-
-    if(cSgAction:StargateToCoordsByReferenceName(a_Player, "home", false)) then
-        return true
-    else
-        return false
-    end
-end
-
-function StargateRenameHandler(a_Split, a_Player)
-    local OldName
-    local NewName
-
-    if(#a_Split == 4) then
-        if(CheckGlobalFlag(a_Split[2])) then
-            OldName = a_Split[3]
-            NewName = a_Split[4]
-        else
-            cMessage:SendFailure(a_Player, "Only global flag allowed (-g or --global)")
-            return false
-        end
-    else
-        OldName = a_Split[2]
-        NewName = a_Split[3]
-    end
-
-    if(not(cSgDao:StargateNameRegisteredToPlayer(a_Player, OldName))) then
-        cMessage:SendFailure(a_Player, "No Stargates with that name exists for you.")
-        return true
-    elseif(cSgDao:StargateNameRegisteredToPlayer(a_Player, NewName)) then
-        cMessage:SendFailure(a_Player, "Stargate with that name is already registered to you.")
-        return true
-    end
-
-    if(cSgDao:UpdateStargate(a_Player, a_Player:GetWorld(), OldName, NewName)) then
-        cMessage:SendSuccess(a_Player, "Stargate was renamed: ${From} -> ${To}", {From = OldName, To = NewName})
-    else
-        cMessage:SendFailure(a_Player, "Stargate could not be renamed.")
-    end
-    return true
-end
-
-function SGCStargateRenameHandler(a_Split, a_Player)
-    local TargetPlayerName = a_Split[2]
-    local TargetPlayer = cSgDao:GetPlayerByName(TargetPlayerName)
-
-    if(TargetPlayer == nil) then
-        cMessage:SendFailure(a_Player, "Could not find Player: ${PlayerName}.", {PlayerName = TargetPlayerName})
-        return true
-    end
-
-    return StargateRenameHandler(Tail(a_Split), TargetPlayer)
-end
-
-function StargateHandler(a_Split, a_Player)
-    local Target = a_Split[2]
-    if(cSgDao:StargateNameMatchesPlayer(Target)) then
-        return cSgAction:StargatePlayerToPlayer(a_Player, Target)
-    elseif(cSgDao:StargateNameRegisteredToPlayer(a_Player, Target) or cSgDao:StargateNameRegisteredAsGlobal(Target)) then
-        return cSgAction:StargateToCoordsByReferenceName(a_Player, Target, false)
-    end
-    cMessage:SendFailure(a_Player, "Stargate does not exist.")
-    return true
-end
-
-function SGCStargateHandler(a_Split, a_Player)
-    local CtxPlayer
-    local TargetDestination
-    local Result
-
-    if(#a_Split == 2) then
-        CtxPlayer = a_Player
-        TargetDestination = a_Split[2]
-    else
-        CtxPlayer = a_Split[2]
-        TargetDestination = a_Split[3]
-    end
-
-    if(cSgDao:StargateNameMatchesPlayer(TargetDestination)) then
-        Result = cSgAction:StargatePlayerToPlayer(CtxPlayer, TargetDestination)
-    else
-        Result = cSgAction:StargateToCoordsByReferenceName(CtxPlayer, TargetDestination, false)
-    end
-
-    if(Result) then
-        cMessage:SendSuccess(a_Player, "${CtxPlayer} successfully traveled to ${TargetPlayer}!", {CtxPlayer = CtxPlayer, TargetPlayer = TargetPlayer})
-        return true
-    else
-        cMessage:SendFailure(a_Player, "Could not send ${CtxPlayer} through the Stargate.", {CtxPlayer = CtxPlayer})
-        return false
-    end
-end
-
-function SGCDeleteStargateHandler(a_Split, a_Player)
-    local StargateName
-    local Player
-    local World
-
-    if(#a_Split == 2) then
-        StargateName = a_Split[2]
-        Player = a_Player
-        World = Player:GetWorld()
-    else
-        StargateName = a_Split[3]
-        Player = a_Split[2]
-        World = Player:GetWorld()
-    end
-
-    if(cSgDao:DeleteStargate(Player, World, StargateName)) then
-        cMessage:SendSuccess(a_Player, "Stargate '${StargateName}' was decommissioned.", {StargateName = StargateName})
-
-        if(a_Player ~= Player) then
-            cMessage:Send(Player, "${SGCPlayer} decommissioned your Stargate '${StargateName}'.", {SGCPlayer = a_Player, StargateName = StargateName})
-        end
-        return true
-    else
-        cMessage:SendFailure(a_Player, "Stargate '${StargateName}' could not be decommissioned.", {StargateName = StargateName})
-        return false
-    end
-end
-
-function DeleteStargateHandler(a_Split, a_Player)
-    local World = a_Player:GetWorld()
-    local StargateName = a_Split[2]
-    if(cSgDao:DeleteStargate(a_Player, World, StargateName)) then
-        cMessage:SendSuccess(a_Player, "Stargate ${StargateName} was deleted!", {StargateName = StargateName})
-        return true
-    else
-        cMessage:SendFailure(a_Player, "Stargate was not deleted. :(")
-        return false
-    end
-end
-

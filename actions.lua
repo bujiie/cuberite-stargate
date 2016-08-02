@@ -3,64 +3,55 @@
 -- Date: 7/24/16
 --
 
-cSgAction = {}
-cSgAction.__index = cSgAction
-
-function cSgAction:StargatePlayerToPlayer(a_CtxPlayer, a_TargetPlayer)
-    local stargate = function(a_TargetPlayer)
-        if(a_CtxPlayer == a_TargetPlayer) then
-            cMessage:SendFailure(a_CtxPlayer, "Stargate cannot connect to itself.")
+function TransportPlayerToPlayer(SourcePlayer, TargetPlayer)
+    local Transport = function(TargetPlayer)
+        if SourcePlayer == TargetPlayer then
+            FailureMessage(SourcePlayer, "Could not travel to player, {Target}. Chevron seven could not lock.", {Target=TargetPlayer:GetName()})
             return false
         else
-            a_FromPlayer:TeleportToEntity(a_TargetPlayer)
-            cMessage:SendSuccess(a_CtxPlayer, "You traveled to " .. a_TargetPlayer:GetName() .. "!")
-            cMessage:Send(a_TargetPlayer, a_CtxPlayer:GetName() .. " traveled to you!")
+            SourcePlayer:TeleportToEntity(TargetPlayer)
             return true
         end
     end
 
-    local World = a_CtxPlayer:GetWorld()
+    local World = SourcePlayer:GetWorld()
 
-    if not World:DoWithPlayer(a_TargetPlayer, stargate) then
-        cMessage:SendFailure(a_CtxPlayer, "Could not find player " .. a_TargetPlayer:GetName())
-        return false
-    end
-end
-
-function cSgAction:StargatePlayerToVector(Player, World, LocationVec)
-    return cSgAction:StargatePlayerToCoords(Player, World, LocationVec:X(), LocationVec:Y(), LocationVec:Z())
-end
-
-function cSgAction:StargatePlayerToCoords(a_Player, a_World, a_PosX, a_PosY, a_PosZ)
-    local stargate = function(a_Player)
-        return a_Player:TeleportToCoords(a_PosX, a_PosY, a_PosZ)
-    end
-
-    if a_World:DoWithPlayer(a_Player:GetName(), stargate) then
-        cMessage:SendSuccess(a_Player, "You survived the wormhole!")
+    if World:DoWithPlayer(TargetPlayer, Transport) then
+        SuccessMessage(SourcePlayer, "You survived the wormhole!")
+        SuccessMessage(TargetPlayer, "{Source} traveled to you!", {Source=SourcePlayer:GetName()})
         return true
     else
-        cMessage:SendFailure(a_Player, "Stargate could not lock on destination.")
+        FailureMessage(SourcePlayer, "Chevron seven could not lock onto {Target}'", {Target=TargetPlayer:GetName()})
+        ERROR("Could not transport {Source} to {Target}.", {Source=SourcePlayer, Target=TargetPlayer})
         return false
     end
 end
 
-function cSgAction:StargateToCoordsByReferenceName(a_Player, a_Name, a_Global)
-    local Stargate = cSgDao:ViewStargate(a_Player, a_Player:GetWorld(), a_Name, a_Global)
+function TransportPlayerToCoordinates(Player, World, X, Y, Z)
+    local Transport = function(Player)
+        return Player:TeleportToCoords(X, Y, Z)
+    end
 
-    if(cSgAction:StargatePlayerToCoords(a_Player, Stargate["World"], Stargate["PosX"], Stargate["PosY"], Stargate["PosZ"])) then
+    if World:DoWithPlayer(Player:GetName(), Transport) then
+        SuccessMessage(Player, "You survived the wormhole!")
         return true
     else
+        FailureMessage(Player, "Chevron seven could not lock.")
+        ERROR("Could not transport {Player} to  coordinates.", {Player=Player:GetName()})
         return false
     end
 end
 
-function cSgAction:TravelToLocationByReferenceName(Player, Name, Global)
-    local Stargate = cSgDao:ViewStargatesAccessibleByPlayer(Player, Player:GetWorld(), Name)
+function TransportPlayerToCoordinatesByReferenceName(Player, Name, Global)
+    local Status, Result = ViewStargateByName(Player, Name, Global)
 
-    if(cSgAction:StargatePlayerToCoords(Player, Stargate["World"], Stargate["PosX"], Stargate["PosY"], Stargate["PosZ"])) then
-        return true
+    if Status then
+        return TransportPlayerToCoordinates(Player, Result["World"], Result["PosX"], Result["PosY"], Result["PosZ"])
     else
         return false
     end
+end
+
+function TransportPlayerToCoordinatesByVector(Player, World, Vector)
+    return TransportPlayerToCoordinates(Player, World, Vector:X(), Vector:Y(), Vector:Z())
 end
